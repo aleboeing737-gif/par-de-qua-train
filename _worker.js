@@ -31,11 +31,6 @@ function normalizeTrain(d,n){
   };
 }
 
-async function backend(path){
-  const r=await fetch(BACKEND+path,{headers:{accept:'application/json'},redirect:'follow'});
-  const text=await r.text(); let data=null;
-  try{data=text?JSON.parse(text):null}catch{throw new Error(`Backend HTTP ${r.status}: risposta non JSON`)}
-  return {r,data};
 }
 
 
