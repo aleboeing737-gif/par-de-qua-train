@@ -1,0 +1,140 @@
+*{box-sizing:border-box}html,body{margin:0;height:100%;font-family:Inter,Segoe UI,Arial,sans-serif;background:#07131f;color:#f4f8fb}body{display:grid;grid-template-rows:64px 1fr 25px;overflow:hidden}
+header{display:flex;align-items:center;gap:24px;padding:0 18px;background:#071522;border-bottom:1px solid #1d3447;z-index:1000}.brand{display:flex;align-items:center;gap:9px;white-space:nowrap;letter-spacing:.2px}.logo{font-size:18px}.version{font-size:10px;color:#6f9dbb;font-weight:500}.controls{display:flex;gap:8px;flex:1;max-width:760px}.controls input,.controls button,.controls select{height:39px;border:1px solid #2a4a61;border-radius:9px;background:#0c2030;color:#f7fbff}.controls input{flex:1;padding:0 14px;outline:none}.controls input:focus{border-color:#55b8e8;box-shadow:0 0 0 2px #55b8e822}.controls button{padding:0 18px;font-weight:700;cursor:pointer}.controls select{padding:0 12px}#status{margin-left:auto;color:#70e2b0;font-size:11px;letter-spacing:.8px}#status i{display:inline-block;width:7px;height:7px;background:#70e2b0;border-radius:50%;box-shadow:0 0 9px #70e2b0;margin-right:5px}
+main{display:grid;grid-template-columns:minmax(0,1fr) 360px;min-height:0}#mapWrap{position:relative;min-width:0}#map{position:absolute;inset:0;background:#0b1822}.floatingTitle{position:absolute;z-index:500;left:18px;bottom:20px;background:#071522e8;border:1px solid #31526a;border-radius:12px;padding:12px 15px;box-shadow:0 8px 30px #0007;display:flex;flex-direction:column;gap:4px;pointer-events:none}.floatingTitle span{font-size:11px;color:#9abbd0}.mapBadge{position:absolute;z-index:500;right:14px;top:14px;background:#071522e8;border:1px solid #29485e;border-radius:9px;padding:8px 11px;font-size:11px;pointer-events:none}
+#panel{background:#071522;border-left:1px solid #1e384b;padding:22px 20px;overflow:auto}.panelHead small{color:#5d8ba8;font-size:9px;letter-spacing:2px}.panelHead h2{margin:4px 0 0;font-size:21px}.intro{font-size:13px;line-height:1.45}.muted{color:#9ab8cb}.legend{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin:18px 0;padding-bottom:18px;border-bottom:1px solid #1b3447}.legend div{background:#0c2030;border:1px solid #18364c;border-radius:9px;padding:9px}.legend b{font-size:9px}.legend span{display:block;font-size:9px;color:#88a8bd;margin-top:4px;line-height:1.2}.live{color:#72e7b3}.obs{color:#65cfff}.trainid{color:#e9c96c}.empty{height:230px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#8caabd;gap:8px}.empty span{font-size:30px;opacity:.55}.empty b{color:#dce9f1}.empty small{font-size:11px}.trainCard{margin-top:5px}.trainTop{display:flex;justify-content:space-between;align-items:flex-start}.trainTop h3{margin:0;font-size:25px}.delay{padding:6px 9px;border-radius:8px;background:#143426;color:#82f0ba;font-weight:800;font-size:12px}.route{margin:13px 0 18px;font-size:14px;font-weight:700}.route span{color:#5f87a1;margin:0 5px}.dataGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.dataBox{background:#0b2030;border:1px solid #17384e;border-radius:10px;padding:11px}.dataBox small{display:block;color:#6f9bb6;font-size:9px;text-transform:uppercase;letter-spacing:.7px}.dataBox b{display:block;margin-top:5px;font-size:12px}.provenance{margin-top:12px;background:#092235;border-left:3px solid #55c8ff;padding:10px 11px;border-radius:5px;font-size:11px;line-height:1.4}.error{color:#ff9cb7}details{margin-top:14px;color:#a8c4d6}pre{font-size:10px;white-space:pre-wrap;overflow-wrap:anywhere}footer{text-align:center;font-size:9px;color:#5d839c;padding:7px;background:#06111b;border-top:1px solid #172c3c}
+.train-icon{background:transparent!important;border:0!important}.train-pin{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#ff3f78;color:white;border:3px solid white;box-shadow:0 0 0 5px #ff3f7830,0 4px 16px #0009;font-size:15px}.station-ring{width:22px;height:22px;border-radius:50%;background:#52c7ff33;border:3px solid #70d3ff;box-shadow:0 0 0 6px #52c7ff22}
+@media(max-width:850px){body{grid-template-rows:auto 1fr 24px;overflow:auto}header{flex-wrap:wrap;padding:10px}.controls{order:3;width:100%;max-width:none}main{grid-template-columns:1fr;grid-template-rows:58vh auto}#panel{border-left:0;border-top:1px solid #1e384b}#status{font-size:9px}.legend{grid-template-columns:1fr 1fr 1fr}}
+.maplibregl-map{font-family:Inter,Segoe UI,Arial,sans-serif}
+.maplibregl-ctrl-group{background:#0a1b29!important;border:1px solid #29465b}
+.maplibregl-ctrl-group button{filter:invert(1);opacity:.85}
+.maplibregl-ctrl-attrib{background:#071522dc!important;color:#8ba9bd!important}
+.maplibregl-ctrl-attrib a{color:#9edcff!important}
+.train-map-marker{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#ff3f78;color:#fff;border:3px solid #fff;box-shadow:0 0 0 5px #ff3f7830,0 4px 16px #0009;font-size:16px;cursor:pointer}
+
+/* v0.3.0: railway network is the visual focus; city labels are rendered by MapLibre. */
+
+.liveBadge{position:absolute;left:14px;bottom:14px;z-index:5;background:rgba(7,21,34,.88);
+border:1px solid rgba(104,213,255,.28);border-radius:10px;padding:7px 10px;font-size:12px;
+color:#cfeef9;backdrop-filter:blur(8px);pointer-events:none}
+
+/* v0.5.5 — readable train popup */
+.pdq-train-popup .maplibregl-popup-content{
+  background:#071522 !important;
+  color:#f2fbff !important;
+  border:1px solid rgba(104,213,255,.55);
+  border-radius:12px;
+  padding:14px 36px 14px 15px;
+  box-shadow:0 12px 32px rgba(0,0,0,.48);
+  font-size:13px;
+  line-height:1.55;
+  min-width:230px;
+}
+.pdq-train-popup .maplibregl-popup-content b{
+  color:#68d5ff !important;
+  font-size:14px;
+}
+.pdq-train-popup .maplibregl-popup-content small{
+  color:#9fc6d7 !important;
+}
+.pdq-train-popup .maplibregl-popup-close-button{
+  color:#eaf9ff !important;
+  font-size:22px;
+  line-height:28px;
+  width:32px;
+  height:32px;
+  right:3px;
+  top:3px;
+  border-radius:8px;
+}
+.pdq-train-popup .maplibregl-popup-close-button:hover{
+  background:rgba(104,213,255,.13) !important;
+}
+.pdq-train-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.pdq-train-popup.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.pdq-train-popup.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip{
+  border-top-color:#071522 !important;
+}
+.pdq-train-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.pdq-train-popup.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.pdq-train-popup.maplibregl-popup-anchor-top-right .maplibregl-popup-tip{
+  border-bottom-color:#071522 !important;
+}
+.pdq-train-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip{border-right-color:#071522 !important}
+.pdq-train-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip{border-left-color:#071522 !important}
+
+/* v0.5.6 hard override: MapLibre popup theme */
+#map .maplibregl-popup-content,
+.maplibregl-map .maplibregl-popup-content{
+ background:#071522 !important;
+ color:#f2fbff !important;
+ border:1px solid rgba(104,213,255,.65) !important;
+ border-radius:12px !important;
+}
+#map .maplibregl-popup-content *,
+.maplibregl-map .maplibregl-popup-content *{color:inherit}
+#map .maplibregl-popup-content b{color:#68d5ff !important}
+#map .maplibregl-popup-content small{color:#9fc6d7 !important}
+#map .maplibregl-popup-close-button{color:#f2fbff !important}
+
+/* v0.5.7 — prevent map status badges from overlapping */
+.mapBadge{
+  position:absolute !important;
+  left:14px !important;
+  bottom:54px !important;
+  z-index:6 !important;
+  max-width:calc(100% - 28px);
+}
+.liveBadge{
+  position:absolute !important;
+  left:14px !important;
+  bottom:14px !important;
+  z-index:5 !important;
+  max-width:calc(100% - 28px);
+}
+/* On narrow screens stack them with enough breathing room */
+@media (max-width:700px){
+  .mapBadge{bottom:58px !important;}
+  .liveBadge{bottom:14px !important;}
+}
+
+/* v0.5.8 — CORRECT layout fix.
+   The previous build moved .mapBadge, but the collision in the screenshot
+   is between .floatingTitle and .liveBadge. Restore mapBadge and separate
+   the two bottom widgets onto opposite sides. */
+.mapBadge{
+  left:auto !important;
+  bottom:auto !important;
+  right:14px !important;
+  top:14px !important;
+  z-index:500 !important;
+}
+.floatingTitle{
+  left:18px !important;
+  right:auto !important;
+  bottom:20px !important;
+  z-index:500 !important;
+}
+.liveBadge{
+  left:auto !important;
+  right:14px !important;
+  bottom:14px !important;
+  z-index:501 !important;
+  max-width:min(360px,calc(100% - 28px));
+}
+@media(max-width:700px){
+  .floatingTitle{
+    left:10px !important;
+    bottom:54px !important;
+    max-width:calc(100% - 20px);
+  }
+  .liveBadge{
+    left:10px !important;
+    right:auto !important;
+    bottom:10px !important;
+    max-width:calc(100% - 20px);
+  }
+  .mapBadge{
+    right:10px !important;
+    top:10px !important;
+  }
+}
