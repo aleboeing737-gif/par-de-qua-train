@@ -1,4 +1,4 @@
-const VT = 'https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno';
+const VT = 'http://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno';
 const HUBS = [
 'S01700','S01604','S01702','S00817','S00219','S00306','S01316','S01820',
 'S09218','S03201','S03317','S04203','S05000','S06000','S08400','S11781',
@@ -8,7 +8,8 @@ const HUBS = [
 function nowVT(){
   const d=new Date();
   const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], mon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return `${days[d.getDay()]} ${mon[d.getMonth()]} ${String(d.getDate()).padStart(2,'0')} ${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+  const off=-d.getTimezoneOffset(), sign=off>=0?'+':'-', mins=Math.abs(off), hh=String(Math.floor(mins/60)).padStart(2,'0'), mm=String(mins%60).padStart(2,'0');
+  return `${days[d.getDay()]} ${mon[d.getMonth()]} ${String(d.getDate()).padStart(2,'0')} ${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')} GMT${sign}${hh}${mm}`;
 }
 async function vt(path){
   const r=await fetch(`${VT}${path}`,{headers:{'Accept':'application/json,text/plain,*/*'},cf:{cacheTtl:0}});
@@ -32,7 +33,7 @@ async function getStationBoard(id){
   try{
     const x=await vt(`/partenze/${id}/${encodeURIComponent(nowVT())}`);
     return Array.isArray(x)?x:[];
-  }catch{return []}
+  }catch(e){ throw new Error(`partenze ${id}: ${e.message}`); }
 }
 async function getRun(t){
   const n=t.numeroTreno;
@@ -78,7 +79,12 @@ function normalize(run,last){
 }
 
 async function livePassenger(){
-  const boards=(await Promise.all(HUBS.map(getStationBoard))).flat();
+  const results=await Promise.all(HUBS.map(async id=>{
+    try{return {id,rows:await getStationBoard(id),error:null};}
+    catch(e){return {id,rows:[],error:e.message};}
+  }));
+  const errors=results.filter(x=>x.error);
+  const boards=results.flatMap(x=>x.rows);
   const uniq=new Map();
   for(const t of boards) if(t?.numeroTreno!=null && isCirculating(t)) uniq.set(key(t),t);
   const candidates=[...uniq.values()];
@@ -92,7 +98,7 @@ async function livePassenger(){
       if(last) out.push(normalize(run,last));
     }
   }
-  return out;
+  return {trains:out, diagnostics:{hubs:HUBS.length,boards:boards.length,candidates:candidates.length,sourceErrors:errors.length,errors:errors.slice(0,5)}};
 }
 
 async function asset(request,env){return env.ASSETS.fetch(request)}
@@ -109,8 +115,8 @@ export default {
    }
    if(u.pathname==='/api/v1/live/passenger'){
      try{
-       const trains=await livePassenger();
-       return new Response(JSON.stringify({ok:true,count:trains.length,trains,source:'ViaggiaTreno'}),{headers:{'content-type':'application/json','cache-control':'no-store'}});
+       const result=await livePassenger();
+       return new Response(JSON.stringify({ok:true,count:result.trains.length,trains:result.trains,diagnostics:result.diagnostics,source:'ViaggiaTreno'}),{headers:{'content-type':'application/json','cache-control':'no-store'}});
      }catch(e){
        return new Response(JSON.stringify({ok:false,count:0,trains:[],error:String(e)}),{status:502,headers:{'content-type':'application/json','cache-control':'no-store'}});
      }

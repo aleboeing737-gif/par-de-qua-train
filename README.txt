@@ -1,16 +1,13 @@
-Par De Qua Train v0.8.1 REAL FIX
+Par De Qua Train v0.8.2 REAL FIX 2
 
-Build completa per Cloudflare Pages Advanced Mode.
+Fix critico:
+- ViaggiaTreno richiede per /partenze un Date.toString-like completo con GMT offset.
+- la build precedente inviava un timestamp senza GMT offset, quindi ViaggiaTreno poteva
+  restituire nessun dato e l'app mostrava 0 treni.
+- usato il base URL HTTP documentato da ViaggiaTreno.
+- l'API ora espone diagnostics (hub interrogati, righe ricevute, candidati, errori).
 
-Fix principale:
-- usa i dati esatti di codOrigine e dataPartenzaTreno restituiti da /partenze;
-- interroga /andamentoTreno con la corsa esatta;
-- ricava l'ultima fermata effettivamente rilevata;
-- usa /getCoordinateStazione per ottenere le coordinate della stazione rilevata;
-- non richiede coordinate lat/lon dentro l'oggetto fermata;
-- endpoint diagnostico /api/v1/source-status per verificare la risposta ViaggiaTreno.
-
-File da mettere nella root:
+File root:
 index.html
 app.js
 app.css
