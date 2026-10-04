@@ -36,32 +36,43 @@ async function getStationBoard(id){
 }
 async function getRun(t){
   const n=t.numeroTreno;
+  const cod=t.codOrigine;
+  const ts=t.dataPartenzaTreno;
+  if(!n || !cod || !ts) return null;
   try{
-    const info=await vt(`/cercaNumeroTreno/${encodeURIComponent(n)}`);
-    if(!info?.codLocOrig || !info?.millisDataPartenza) return null;
-    const a=await vt(`/andamentoTreno/${info.codLocOrig}/${n}/${info.millisDataPartenza}`);
+    const a=await vt(`/andamentoTreno/${encodeURIComponent(cod)}/${encodeURIComponent(n)}/${encodeURIComponent(ts)}`);
     if(!a) return null;
-    return {info,a,board:t};
+    return {a,board:t};
   }catch{return null}
 }
-function extractLast(run){
+async function extractLast(run){
   const a=run.a, f=Array.isArray(a.fermate)?a.fermate:[];
   let last=null;
-  for(const s of f){
-    const lat=num(s.latitudine??s.lat??s.latitude), lon=num(s.longitudine??s.lon??s.longitude);
-    const eff=s.effettiva??s.arrivoEffettivo??s.partenzaEffettiva;
-    if(lat!=null&&lon!=null && eff) last={lat,lon,station:s.stazione??s.nomeStazione??'',time:eff};
+  for(const st of f){
+    const effective = st.effettiva ?? st.partenzaEffettiva ?? st.arrivoEffettivo;
+    const id = st.id ?? st.codStazione ?? st.codiceStazione;
+    if(effective && id) last={id,station:st.stazione??st.nomeStazione??'',time:effective};
   }
-  return last;
+  if(!last) return null;
+  try{
+    const c=await vt(`/getCoordinateStazione/${encodeURIComponent(last.id)}`);
+    const lat=num(c?.latitudine??c?.lat??c?.latitude);
+    const lon=num(c?.longitudine??c?.lon??c?.longitude);
+    if(lat!=null&&lon!=null) return {...last,lat,lon};
+  }catch{}
+  return null;
 }
 function normalize(run,last){
-  const b=run.board,a=run.a, i=run.info;
-  const p=last||{};
+  const b=run.board,a=run.a;
   return {
-    id:key(b),number:String(i.numeroTreno??b.numeroTreno),category:b.categoriaDescrizione??b.categoria??a.categoria??'',
-    origin:i.descLocOrig??b.origine??a.origine??'',destination:b.destinazione??a.destinazione??'',
+    id:key(b),
+    number:String(b.numeroTreno),
+    category:b.categoriaDescrizione??b.categoria??a.categoria??'',
+    origin:b.origine??a.origine??'',
+    destination:b.destinazione??a.destinazione??'',
     delay:num(b.ritardo??a.ritardo??0)??0,
-    lat:p.lat,lon:p.lon,positionLabel:`Ultimo rilevamento reale: ${p.station||'stazione'}`,
+    lat:last.lat,lon:last.lon,
+    positionLabel:`Ultimo rilevamento reale: ${last.station||'stazione'}`,
     estimated:false
   }
 }
@@ -77,7 +88,7 @@ async function livePassenger(){
     const rs=await Promise.all(candidates.slice(i,i+batch).map(getRun));
     for(const run of rs){
       if(!run) continue;
-      const last=extractLast(run);
+      const last=await extractLast(run);
       if(last) out.push(normalize(run,last));
     }
   }
@@ -88,6 +99,14 @@ async function asset(request,env){return env.ASSETS.fetch(request)}
 export default {
  async fetch(request,env){
    const u=new URL(request.url);
+   if(u.pathname==='/api/v1/source-status'){
+     try{
+       const x=await vt(`/statistiche/${Date.now()}`);
+       return new Response(JSON.stringify({ok:true,source:'ViaggiaTreno',statistics:x}),{headers:{'content-type':'application/json','cache-control':'no-store'}});
+     }catch(e){
+       return new Response(JSON.stringify({ok:false,source:'ViaggiaTreno',error:String(e)}),{status:502,headers:{'content-type':'application/json','cache-control':'no-store'}});
+     }
+   }
    if(u.pathname==='/api/v1/live/passenger'){
      try{
        const trains=await livePassenger();
